@@ -27,6 +27,12 @@ function cipher_menu() {
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
+  $items['decipher_failure_page'] = array(
+    'title' => 'undeciphered',
+    'page callback' => 'undeciphered',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
   return $items;
 }
 
@@ -70,8 +76,6 @@ function cipher_form_validate(&$form, &$form_state) {
   if(intval($form_state['values']['shift']) < 0 || intval($form_state['values']['shift']) > 26) {
     form_set_error('shift', t('You must use a value between 0 and 26.'));
   }
-  echo round(intval($form_state['values']['shift']));
-  echo intval($form_state['values']['shift']);
   if(!intval($form_state['values']['shift'])) {
     form_set_error('shift', t('You must use an integer.'));
   }
@@ -97,7 +101,11 @@ function cipher_form_submit($form, &$form_state) {
       }
     }
   }
+  $word_url = 'http://randomword.setgetgo.com/get.php';
+  $resp = file_get_contents($word_url);
   $message = implode($message);
+  db_query("INSERT INTO cipher_keys (keyword,shift,direction) VALUES ('{$resp}', {$shift}, '{$direction}');");
+  $_SESSION['keyword'] = $resp;
   $_SESSION['message'] = $message;
   $_SESSION['shift'] = $shift;
   $_SESSION['direction'] = $direction;
@@ -106,7 +114,7 @@ function cipher_form_submit($form, &$form_state) {
 
 function ciphered() {
 
-  return '</h1>'.$_SESSION['message'].'</h1>';
+  return '</h1>Your message is "'.$_SESSION['message'].'"</h1><br><h2>Your keyword is "'.$_SESSION['keyword'].'." Use this to decipher your message</h2>';
 }
 
 function decipher_form() {
@@ -116,16 +124,10 @@ function decipher_form() {
     '#description' => t('paste your ciphered message here'),
   );
 
-  $form['shift'] = array(
-    '#title' => 'shift',
+  $form['keyword'] = array(
+    '#title' => 'keyword',
     '#type' => 'textfield',
-    '#description' => t('original shift value'),
-  );
-
-  $form['direction'] = array(
-    '#title' => 'direction',
-    '#type' => 'textfield',
-    '#description' => t('original direction'),
+    '#description' => t('type your special keyword here'),
   );
 
   $form['submit'] = array(
@@ -138,12 +140,23 @@ function decipher_form() {
 
 function decipher_form_submit($form, &$form_state) {
   $message = strtolower($form_state['values']['message']);
-  $shift = strtolower($form_state['values']['shift']);
-  $direction = strtolower($form_state['values']['direction']);
+  $keyword = strtolower($form_state['values']['keyword']);
+  $shift;
+  $direction;
+  $keys = db_query("SELECT * FROM cipher_keys WHERE keyword = '{$keyword}'");
+  foreach ($keys as $key) {
+      if (isset($key)) {
+          $shift = $key->shift;
+          $direction = $key->direction;
+      }
+
+  }
   $alphabet = range('a','z');
   $alphabet = array_merge($alphabet, $alphabet, $alphabet);
-  $shift = intval($shift);
   $message = str_split($message,1);
+  if (!isset($shift)) {
+      drupal_goto('decipher_failure_page');
+  }
   foreach($message as $key => $val) {
     $position = array_search($val, $alphabet);
     if ($position || $position === 0) {
@@ -163,4 +176,9 @@ function decipher_form_submit($form, &$form_state) {
 function deciphered() {
 
   return '<h1>'.$_SESSION['deciphered_message'].'</h1>';
+}
+
+function undeciphered() {
+
+  return "<h1>Sorry, we couldn't decipher your message. Check your keyword and try again</h1>";
 }
