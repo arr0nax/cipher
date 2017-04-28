@@ -14,6 +14,19 @@ function cipher_menu() {
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
+  $items['decipher'] = array(
+    'title' => 'decrypt your message here',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('decipher_form'),
+    'access callback' => TRUE,
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['decipher_success_page'] = array(
+    'title' => 'deciphered',
+    'page callback' => 'deciphered',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
   return $items;
 }
 
@@ -86,10 +99,68 @@ function cipher_form_submit($form, &$form_state) {
   }
   $message = implode($message);
   $_SESSION['message'] = $message;
+  $_SESSION['shift'] = $shift;
+  $_SESSION['direction'] = $direction;
   $form_state['redirect'] = 'cipher_success_page';
 }
 
 function ciphered() {
 
-  return '</p>'.$_SESSION['message'].'</p>';
+  return '</h1>'.$_SESSION['message'].'</h1>';
+}
+
+function decipher_form() {
+  $form['message'] = array(
+    '#title' => 'message',
+    '#type' => 'textfield',
+    '#description' => t('paste your ciphered message here'),
+  );
+
+  $form['shift'] = array(
+    '#title' => 'shift',
+    '#type' => 'textfield',
+    '#description' => t('original shift value'),
+  );
+
+  $form['direction'] = array(
+    '#title' => 'direction',
+    '#type' => 'textfield',
+    '#description' => t('original direction'),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'decipher me'
+  );
+
+  return $form;
+}
+
+function decipher_form_submit($form, &$form_state) {
+  $message = strtolower($form_state['values']['message']);
+  $shift = strtolower($form_state['values']['shift']);
+  $direction = strtolower($form_state['values']['direction']);
+  $alphabet = range('a','z');
+  $alphabet = array_merge($alphabet, $alphabet, $alphabet);
+  $shift = intval($shift);
+  $message = str_split($message,1);
+  foreach($message as $key => $val) {
+    $position = array_search($val, $alphabet);
+    if ($position || $position === 0) {
+      if ($direction === 'right') {
+        $message[$key] = $alphabet[$position + 26 - $shift];
+      }
+      else if ($direction === 'left') {
+        $message[$key] = $alphabet[$position + 26 + $shift];
+      }
+    }
+  }
+  $message = implode($message);
+  $_SESSION['deciphered_message'] = $message;
+  $form_state['redirect'] = 'decipher_success_page';
+}
+
+function deciphered() {
+
+  return '<h1>'.$_SESSION['deciphered_message'].'</h1>';
 }
