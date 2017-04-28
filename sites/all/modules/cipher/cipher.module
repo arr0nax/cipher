@@ -1,0 +1,95 @@
+<?php
+
+function cipher_menu() {
+  $items['cipher'] = array(
+    'title' => 'encrypt your message here',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cipher_form'),
+    'access callback' => TRUE,
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['cipher_success_page'] = array(
+    'title' => 'ciphered',
+    'page callback' => 'ciphered',
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+function cipher_form() {
+  $form['message'] = array(
+    '#title' => 'message',
+    '#type' => 'textfield',
+    '#description' => t('type your message here'),
+  );
+
+  $form['shift'] = array(
+    '#title' => 'shift',
+    '#type' => 'textfield',
+    '#description' => t('how far should the letters be shifted?'),
+  );
+
+  $form['direction'] = array(
+    '#title' => 'direction',
+    '#type' => 'textfield',
+    '#description' => t('type "right" or "left"'),
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'cipher me'
+  );
+
+  return $form;
+}
+
+function cipher_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'cipher_form') {
+    $form['#validate'][] = 'cipher_form_validate';
+  }
+}
+
+function cipher_form_validate(&$form, &$form_state) {
+  if($form_state['values']['direction'] != 'right' && $form_state['values']['direction'] != 'left') {
+    form_set_error('direction', t('You must designate "left" or "right" as your direction.'));
+  }
+  if(intval($form_state['values']['shift']) < 0 || intval($form_state['values']['shift']) > 26) {
+    form_set_error('shift', t('You must use a value between 0 and 26.'));
+  }
+  echo round(intval($form_state['values']['shift']));
+  echo intval($form_state['values']['shift']);
+  if(!intval($form_state['values']['shift'])) {
+    form_set_error('shift', t('You must use an integer.'));
+  }
+
+}
+
+function cipher_form_submit($form, &$form_state) {
+  $message = strtolower($form_state['values']['message']);
+  $shift = strtolower($form_state['values']['shift']);
+  $direction = strtolower($form_state['values']['direction']);
+  $alphabet = range('a','z');
+  $alphabet = array_merge($alphabet, $alphabet, $alphabet);
+  $shift = intval($shift);
+  $message = str_split($message,1);
+  foreach($message as $key => $val) {
+    $position = array_search($val, $alphabet);
+    if ($position || $position === 0) {
+      if ($direction === 'right') {
+        $message[$key] = $alphabet[$position + 26 + $shift];
+      }
+      else if ($direction === 'left') {
+        $message[$key] = $alphabet[$position + 26 - $shift];
+      }
+    }
+  }
+  $message = implode($message);
+  $_SESSION['message'] = $message;
+  $form_state['redirect'] = 'cipher_success_page';
+}
+
+function ciphered() {
+
+  return '</p>'.$_SESSION['message'].'</p>';
+}

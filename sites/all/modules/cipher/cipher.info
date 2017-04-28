@@ -1,0 +1,5 @@
+name = cipher
+description = encrypt text
+package = Clayton
+core = 7.x
+files[] = cipher.module
